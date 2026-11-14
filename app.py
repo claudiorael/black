@@ -10,7 +10,7 @@ from datetime import datetime
 # --- 1. CONFIGURACIÓN DE PÁGINA (WIDE = ANCHO COMPLETO) ---
 st.set_page_config(page_title="Portal Mokkita", page_icon="🦔", layout="wide")
 
-# La URL directa a tu imagen en GitHub (Asegúrate de subir mokkita.png a tu repo)
+# La URL directa a tu imagen en GitHub
 URL_MOKKITA = "https://raw.githubusercontent.com/claudiorael/black/main/mokkita.png"
 
 # --- 2. SÚPER CSS PARA UI MODERNA Y MOKKITA FLOTANTE ---
@@ -21,7 +21,7 @@ st.markdown(f"""
         background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
     }}
     
-    /* Ocultar elementos nativos feos de Streamlit */
+    /* Ocultar elementos nativos de Streamlit */
     header {{ display: none !important; }}
     footer {{ display: none !important; }}
     
@@ -43,7 +43,7 @@ st.markdown(f"""
         font-weight: 800;
     }}
 
-    /* Botones de Acción Gigantes y Atractivos */
+    /* Botones de Acción Atractivos */
     .stButton>button {{
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white !important;
@@ -62,7 +62,7 @@ st.markdown(f"""
         box-shadow: 0 8px 25px rgba(118, 75, 162, 0.6);
     }}
 
-    /* --- MOKKITA FLOTANTE (SIN IFRAMES PARA EVITAR QUE QUEDE ATRAPADO) --- */
+    /* --- MOKKITA FLOTANTE --- */
     @keyframes flotar {{
         0% {{ transform: translateY(0px); }}
         50% {{ transform: translateY(-12px); }}
@@ -76,7 +76,7 @@ st.markdown(f"""
         display: flex;
         flex-direction: column;
         align-items: flex-end;
-        pointer-events: none; /* No bloquea los clics en la pantalla */
+        pointer-events: none;
     }}
     .bot-bubble {{
         background: white;
@@ -214,7 +214,7 @@ def mostrar_aplicacion():
     with tab_revisor:
         st.markdown("## Análisis de Defensa de Grado")
         
-        # Bloque de Configuración (Tarjeta)
+        # Bloque de Configuración
         st.markdown("#### 1. Configuración de Mokkita")
         col_tono, col_nivel = st.columns(2)
         with col_tono:
@@ -224,7 +224,7 @@ def mostrar_aplicacion():
             
         st.markdown("<br>", unsafe_allow_html=True)
 
-        # Bloque de Documentos (Tarjeta)
+        # Bloque de Documentos
         st.markdown("#### 2. Carga de Documentos")
         col_trabajo, col_autor = st.columns(2)
         with col_trabajo:
@@ -263,20 +263,29 @@ def mostrar_aplicacion():
                         prompt_base = obtener_prompt()
                         instrucciones = f"{prompt_base}\n\nTono solicitado: {enfoque_feedback}.\nNivel de exigencia (1-5): {nivel_teorico}."
                         
-                        # --- BÚSQUEDA DINÁMICA DE MODELOS PARA EVITAR ERROR 404 ---
-                        modelo_elegido = "gemini-1.5-flash" # Fallback de seguridad
-                        try:
-                            for m in genai.list_models():
-                                if "1.5" in m.name and "generateContent" in m.supported_generation_methods:
-                                    nombre_limpio = m.name.replace("models/", "")
-                                    modelo_elegido = nombre_limpio
-                                    if "pro" in nombre_limpio:
-                                        break # Dar prioridad a la versión PRO si la API Key la permite
-                        except Exception:
-                            pass
+                        # --- BÚSQUEDA DINÁMICA INFALIBLE ---
+                        modelos_permitidos = [
+                            m.name.replace("models/", "") 
+                            for m in genai.list_models() 
+                            if 'generateContent' in m.supported_generation_methods
+                        ]
+                        
+                        if not modelos_permitidos:
+                            st.error("Tu API Key no tiene modelos habilitados. Por favor, revisa tu clave en Google AI Studio.")
+                            st.stop()
+                            
+                        # Elegir el mejor modelo disponible
+                        modelo_elegido = modelos_permitidos[0]
+                        for m in modelos_permitidos:
+                            if "1.5-pro" in m:
+                                modelo_elegido = m
+                                break
+                            elif "1.5-flash" in m:
+                                modelo_elegido = m
                         
                         modelo = genai.GenerativeModel(model_name=modelo_elegido, system_instruction=instrucciones)
                         
+                        # --- PREPARAR CONTENIDO ---
                         contenido = [g_trabajo]
                         if g_autor:
                             contenido.insert(0, g_autor)
@@ -285,7 +294,7 @@ def mostrar_aplicacion():
                             contenido.append("Analiza de manera imparcial este trabajo de grado.")
                         
                         respuesta = modelo.generate_content(contenido)
-                        st.success(f"¡Análisis completado exitosamente con {modelo_elegido}!")
+                        st.success(f"¡Análisis completado exitosamente con el motor {modelo_elegido}!")
                         
                         st.markdown("<div style='background: white; padding: 30px; border-radius: 15px; border-left: 6px solid #764ba2;'>", unsafe_allow_html=True)
                         st.markdown(respuesta.text)
