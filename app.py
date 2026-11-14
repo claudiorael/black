@@ -3,21 +3,96 @@ import google.generativeai as genai
 import tempfile
 import os
 import time
+import json
+from datetime import datetime
 
-# --- 1. CONFIGURACIÓN DE PÁGINA ---
+# --- CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(page_title="Revisor Académico Mokkita", page_icon="🦔", layout="wide")
 
-# --- 2. GESTIÓN DE SESIÓN (LOGIN) ---
+# --- ESTILOS CSS (DISEÑO VISUAL TIPO "GLASSMORPHISM") ---
+# Recreamos el fondo oscuro y los paneles translúcidos de la imagen de referencia.
+st.markdown("""
+<style>
+    /* Fondo principal: Puedes cambiar la URL por cualquier imagen de psicología o educación */
+    .stApp {
+        background-image: url("https://images.unsplash.com/photo-1557683316-973673baf926?q=80&w=2000&auto=format&fit=crop");
+        background-size: cover;
+        background-position: center;
+        background-attachment: fixed;
+    }
+    
+    /* Panel translúcido central */
+    .css-1r6slb0, .st-emotion-cache-1r6slb0, .st-emotion-cache-1v0mbdj {
+        background: rgba(15, 23, 42, 0.7) !important;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border-radius: 15px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        padding: 2rem;
+        color: white;
+    }
+    
+    /* Textos en blanco para contrastar */
+    h1, h2, h3, p, .stMarkdown, .stText {
+        color: #ffffff !important;
+    }
+    
+    /* Estilo de botones interactivos */
+    .stButton>button {
+        background-color: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 10px;
+        color: white;
+        transition: all 0.3s ease;
+        width: 100%;
+        height: 60px;
+    }
+    .stButton>button:hover {
+        background-color: rgba(255, 255, 255, 0.3);
+        border-color: #ffffff;
+        transform: scale(1.02);
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# --- ARCHIVO DE ESTADÍSTICAS LOCAL ---
+# Usamos un archivo JSON temporal para guardar los registros. 
+# En producción avanzada esto iría a Google Sheets o Supabase.
+STATS_FILE = "mokkita_stats.json"
+
+def registrar_estadistica(usuario, accion):
+    registro = {
+        "usuario": usuario,
+        "fecha_hora": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "accion": accion
+    }
+    datos = []
+    if os.path.exists(STATS_FILE):
+        with open(STATS_FILE, "r") as f:
+            datos = json.load(f)
+    datos.append(registro)
+    with open(STATS_FILE, "w") as f:
+        json.dump(datos, f)
+
+def leer_estadisticas():
+    if os.path.exists(STATS_FILE):
+        with open(STATS_FILE, "r") as f:
+            return json.load(f)
+    return []
+
+# --- GESTIÓN DE SESIÓN (LOGIN) ---
 if "autenticado" not in st.session_state:
     st.session_state["autenticado"] = False
 if "usuario_actual" not in st.session_state:
     st.session_state["usuario_actual"] = None
+if "hora_inicio" not in st.session_state:
+    st.session_state["hora_inicio"] = None
 
 def mostrar_login():
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        st.title("🦔 Portal de Revisión Mokkita")
-        st.write("Ingresa tus credenciales para acceder al análisis crítico.")
+        st.markdown("<h1 style='text-align: center;'>Plataforma Mokkita</h1>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align: center;'>INGRESA TUS CREDENCIALES</p>", unsafe_allow_html=True)
         
         with st.form("login_form"):
             usuario = st.text_input("Usuario").strip().lower()
@@ -30,134 +105,130 @@ def mostrar_login():
                     if usuario in usuarios_permitidos and usuarios_permitidos[usuario] == clave:
                         st.session_state["autenticado"] = True
                         st.session_state["usuario_actual"] = usuario
+                        st.session_state["hora_inicio"] = time.time()
+                        registrar_estadistica(usuario, "Login")
                         st.rerun()
                     else:
                         st.error("❌ Usuario o contraseña incorrectos.")
                 except KeyError:
-                    st.error("Error: No se encontró la lista de usuarios en los secretos del servidor.")
+                    st.error("Error: Configura st.secrets['usuarios'].")
 
-# --- 3. APLICACIÓN PRINCIPAL ---
+# --- APLICACIÓN PRINCIPAL ---
 def mostrar_aplicacion():
-    # Configurar API
     genai.configure(api_key=st.secrets["gemini"]["api_key"])
     
     # Barra lateral
-    st.sidebar.title(f"👤 Bienvenido, {st.session_state['usuario_actual'].capitalize()}")
+    st.sidebar.title(f"👤 {st.session_state['usuario_actual'].capitalize()}")
     if st.sidebar.button("Cerrar Sesión"):
+        tiempo_sesion = round((time.time() - st.session_state["hora_inicio"]) / 60, 2)
+        registrar_estadistica(st.session_state["usuario_actual"], f"Logout (Minutos: {tiempo_sesion})")
         st.session_state["autenticado"] = False
         st.session_state["usuario_actual"] = None
         st.rerun()
 
-    st.title("Revisor de Trabajos y Autores")
-    
-    # Bienvenida de Mokkita
-    with st.chat_message("Mokkita", avatar="🦔"):
-        st.write(f"¡Hola {st.session_state['usuario_actual'].capitalize()}! Soy Mokkita 🦔, tu erizo intelectual de cabecera. Sube el texto del autor base y el trabajo que quieres que revise. Ajusta mis niveles de exigencia y me pondré los lentes para hacerte una crítica aguda.")
+    # Pestañas de navegación. La pestaña Admin solo se crea si el usuario es 'claudio'.
+    if st.session_state["usuario_actual"] == "claudio":
+        tab1, tab2 = st.tabs(["📝 Revisión de Trabajos", "📊 Dashboard Admin (Oculto)"])
+    else:
+        tab1, = st.tabs(["📝 Revisión de Trabajos"])
 
-    # --- CONFIGURACIÓN DE NIVELES DE ANÁLISIS ---
-    st.subheader("⚙️ Configuración del Análisis de Mokkita")
-    with st.expander("Modificar niveles de evaluación (Clic para abrir)", expanded=True):
+    # --- PESTAÑA 1: REVISIÓN ---
+    with tab1:
+        st.markdown("<h2 style='text-align: center;'>Análisis Crítico Constructivista</h2>", unsafe_allow_html=True)
+        
+        with st.chat_message("Mokkita", avatar="🦔"):
+            st.write(f"Hola {st.session_state['usuario_actual'].capitalize()}. Soy Mokkita. Sube la pauta del autor y el trabajo del alumno. Mis niveles de crítica están listos.")
+
         col_a, col_b = st.columns(2)
         with col_a:
-            nivel_teorico = st.slider("Rigor Teórico y Conceptual", 1, 5, 5, help="Nivel de exigencia al evaluar el uso de conceptos del autor.")
-            nivel_estructura = st.slider("Estructura y Coherencia", 1, 5, 4)
+            nivel_teorico = st.slider("Rigor Teórico y Conceptual", 1, 5, 5)
         with col_b:
-            nivel_critica = st.slider("Profundidad Crítica", 1, 5, 4, help="Qué tanto se exige que el alumno cuestione o reflexione.")
-            enfoque_feedback = st.selectbox("Tono de Mokkita", ["Constructivo y Motivador", "Estrictamente Académico", "Crítico, Irónico y Directo"])
+            enfoque_feedback = st.selectbox("Tono de Mokkita", ["Constructivo", "Estricto", "Crítico e Irónico"])
 
-    # --- SUBIDA DE ARCHIVOS ---
-    st.subheader("📄 Carga de Documentos")
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        archivo_autor = st.file_uploader("1. Sube el texto del Autor / Material Base (PDF o TXT)", type=["pdf", "txt"], key="autor")
-    with col2:
-        archivo_trabajo = st.file_uploader("2. Sube el Trabajo del Estudiante (PDF o TXT)", type=["pdf", "txt"], key="trabajo")
+        st.markdown("<br>", unsafe_allow_html=True)
+        col1, col2 = st.columns(2)
+        with col1:
+            archivo_autor = st.file_uploader("📥 Subir Autor / Pauta (PDF/TXT)", type=["pdf", "txt"], key="autor")
+        with col2:
+            archivo_trabajo = st.file_uploader("📥 Subir Trabajo Estudiante (PDF/TXT)", type=["pdf", "txt"], key="trabajo")
 
-    # --- PROCESAMIENTO ---
-    if archivo_autor and archivo_trabajo:
-        if st.button("Generar Análisis Crítico", type="primary"):
-            with st.spinner("Mokkita está leyendo los documentos... esto puede tomar un par de minutos."):
-                archivos_temporales = []
-                archivos_gemini = []
+        if archivo_autor and archivo_trabajo:
+            if st.button("Generar Análisis Crítico", type="primary"):
+                registrar_estadistica(st.session_state["usuario_actual"], "Generó Análisis")
                 
-                try:
-                    def subir_a_gemini(archivo_streamlit):
-                        extension = archivo_streamlit.name.split('.')[-1]
-                        with tempfile.NamedTemporaryFile(delete=False, suffix=f".{extension}") as tmp:
-                            tmp.write(archivo_streamlit.read())
-                            rutatmp = tmp.name
-                            archivos_temporales.append(rutatmp)
-                        
-                        file_g = genai.upload_file(rutatmp)
-                        archivos_gemini.append(file_g)
-                        
-                        while file_g.state.name == 'PROCESSING':
-                            time.sleep(2)
-                            file_g = genai.get_file(file_g.name)
-                        return file_g
+                with st.spinner("Mokkita está analizando la articulación teórica..."):
+                    archivos_temporales = []
+                    archivos_gemini = []
+                    try:
+                        def subir_a_gemini(archivo_streamlit):
+                            ext = archivo_streamlit.name.split('.')[-1]
+                            with tempfile.NamedTemporaryFile(delete=False, suffix=f".{ext}") as tmp:
+                                tmp.write(archivo_streamlit.read())
+                                rutatmp = tmp.name
+                                archivos_temporales.append(rutatmp)
+                            
+                            file_g = genai.upload_file(rutatmp)
+                            archivos_gemini.append(file_g)
+                            
+                            while file_g.state.name == 'PROCESSING':
+                                time.sleep(2)
+                                file_g = genai.get_file(file_g.name)
+                            return file_g
 
-                    g_autor = subir_a_gemini(archivo_autor)
-                    g_trabajo = subir_a_gemini(archivo_trabajo)
+                        g_autor = subir_a_gemini(archivo_autor)
+                        g_trabajo = subir_a_gemini(archivo_trabajo)
 
-                    # Prompt dinámico integrando a Mokkita
-                    instrucciones = f"""
-                    Eres Mokkita, un erizo intelectual que usa lentes y suéter. Eres un profesor universitario y revisor académico muy agudo. 
-                    El usuario ha pedido que tu tono para esta revisión sea: {enfoque_feedback}. Adapta tu personalidad a este tono (si te piden ser crítico y directo, usa tu característico humor oscuro e irónico).
-                    Tu tarea es comparar el trabajo del estudiante con el material del autor de referencia y emitir un informe.
-                    
-                    Niveles de exigencia (escala 1 a 5):
-                    - Rigor Teórico: {nivel_teorico}/5
-                    - Estructura y Coherencia: {nivel_estructura}/5
-                    - Profundidad Crítica: {nivel_critica}/5
-                    
-                    Estructura estrictamente tu respuesta de la siguiente manera y háblale directamente al usuario como Mokkita:
-                    1. 🎯 EL VEREDICTO DE MOKKITA: Breve apreciación general del trabajo.
-                    2. ✅ PUNTOS FUERTES: Qué hizo bien el estudiante al articular la teoría.
-                    3. 🛠️ ÁREAS DE MEJORA: Dónde falla el texto.
-                    4. 💡 CONSEJO DEL ERIZO: Qué modificar específicamente antes de entregar la versión final.
-                    """
-                    
-                    modelo = genai.GenerativeModel(
-                        model_name="gemini-1.5-pro",
-                        system_instruction=instrucciones
-                    )
-                    
-                    prompt = "Analiza estos dos documentos. El primero es el material del autor/referencia. El segundo es el trabajo del estudiante."
-                    
-                    respuesta = modelo.generate_content([g_autor, g_trabajo, prompt])
-                    
-                    st.success("¡Mokkita ha terminado su análisis!")
-                    
-                    # Mostrar resultados en formato chat de Mokkita
-                    st.markdown("---")
-                    with st.chat_message("Mokkita", avatar="🦔"):
-                        st.markdown(respuesta.text)
+                        instrucciones = f"""
+                        Eres Mokkita 🦔. Profesor universitario. Tono: {enfoque_feedback}.
+                        Compara el trabajo del estudiante con el material del autor.
+                        Rigor exigido: {nivel_teorico}/5.
                         
-                        # --- BOTÓN PARA GUARDAR/DESCARGAR DENTRO DEL CHAT ---
-                        st.download_button(
-                            label="📥 Descargar Reporte de Mokkita",
-                            data=respuesta.text,
-                            file_name=f"Revision_Mokkita_{st.session_state['usuario_actual']}.md",
-                            mime="text/markdown"
-                        )
-                    st.markdown("---")
+                        Estructura:
+                        1. 🎯 VEREDICTO DE MOKKITA
+                        2. ✅ PUNTOS FUERTES (Articulación)
+                        3. 🛠️ ÁREAS DE MEJORA
+                        """
+                        modelo = genai.GenerativeModel(model_name="gemini-1.5-pro", system_instruction=instrucciones)
+                        respuesta = modelo.generate_content([g_autor, g_trabajo, "Analiza estos documentos."])
+                        
+                        st.success("Análisis completado")
+                        with st.chat_message("Mokkita", avatar="🦔"):
+                            st.markdown(respuesta.text)
+                            st.download_button(
+                                label="💾 Descargar Reporte de Mokkita",
+                                data=respuesta.text,
+                                file_name=f"Reporte_{st.session_state['usuario_actual']}.md",
+                                mime="text/markdown"
+                            )
+                    except Exception as e:
+                        st.error(f"Error: {e}")
+                    finally:
+                        for f_g in archivos_gemini:
+                            try: genai.delete_file(f_g.name)
+                            except: pass
+                        for f_tmp in archivos_temporales:
+                            if os.path.exists(f_tmp):
+                                os.remove(f_tmp)
 
-                except Exception as e:
-                    st.error(f"Ocurrió un error: {e}")
+    # --- PESTAÑA 2: DASHBOARD ADMIN (SOLO PARA CLAUDIO) ---
+    if st.session_state["usuario_actual"] == "claudio":
+        with tab2:
+            st.subheader("Estadísticas de Uso de la Plataforma")
+            datos = leer_estadisticas()
+            if datos:
+                st.dataframe(datos, use_container_width=True)
                 
-                finally:
-                    # Limpieza
-                    for f_g in archivos_gemini:
-                        try:
-                            genai.delete_file(f_g.name)
-                        except:
-                            pass
-                    for f_tmp in archivos_temporales:
-                        if os.path.exists(f_tmp):
-                            os.remove(f_tmp)
+                # Métricas rápidas
+                total_logins = len([d for d in datos if "Login" in d["accion"]])
+                total_analisis = len([d for d in datos if "Generó Análisis" in d["accion"]])
+                
+                col1, col2 = st.columns(2)
+                col1.metric("Ingresos Totales", total_logins)
+                col2.metric("Trabajos Revisados", total_analisis)
+            else:
+                st.info("Aún no hay registros de actividad.")
 
-# --- 4. CONTROLADOR DE VISTAS ---
+# --- CONTROLADOR ---
 if not st.session_state["autenticado"]:
     mostrar_login()
 else:
