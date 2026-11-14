@@ -7,93 +7,117 @@ import json
 from datetime import datetime
 
 # --- CONFIGURACIÓN DE PÁGINA ---
-st.set_page_config(page_title="Defensa de Grado - Mokkita", page_icon="🦔", layout="wide")
+# Forzamos que la barra lateral empiece abierta (expanded)
+st.set_page_config(
+    page_title="Defensa de Grado - Mokkita", 
+    page_icon="🦔", 
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-# --- ESTILOS CSS AVANZADOS (UI MÁS LIMPIA Y MOKKITA ANIMADO) ---
-st.markdown("""
+# --- LA IMAGEN DE TU MOKKITA ---
+URL_IMAGEN_MOKKITA = "https://raw.githubusercontent.com/claudiorael/black/main/mokkita.png"
+
+# --- ESTILOS CSS (TEMA CLARO Y LIMPIO) ---
+st.markdown(f"""
 <style>
-    /* Fondo con gradiente moderno y oscuro */
-    .stApp {
-        background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
-        color: #ffffff;
-    }
+    /* Fondo claro y limpio */
+    .stApp {{
+        background-color: #F8F9FA;
+        color: #2C3E50;
+    }}
     
-    /* Contenedores translúcidos */
-    .st-emotion-cache-1r6slb0, .st-emotion-cache-1v0mbdj {
-        background: rgba(255, 255, 255, 0.05) !important;
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        border-radius: 20px;
-        border: 1px solid rgba(255, 255, 255, 0.1);
+    /* Forzar que todos los textos sean oscuros */
+    h1, h2, h3, p, span, .stMarkdown, .stText, label {{
+        color: #2C3E50 !important;
+    }}
+    
+    /* Contenedores blancos con sombra suave */
+    .st-emotion-cache-1r6slb0, .st-emotion-cache-1v0mbdj {{
+        background: #FFFFFF !important;
+        border-radius: 15px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+        border: 1px solid #E9ECEF;
         padding: 2rem;
-    }
+    }}
 
     /* Ocultar barra superior y pie de página de Streamlit */
-    header {visibility: hidden;}
-    footer {visibility: hidden;}
+    header {{visibility: hidden;}}
+    footer {{visibility: hidden;}}
 
-    /* Botones más grandes, redondeados e interactivos */
-    .stButton>button {
-        background: linear-gradient(90deg, #00C9FF 0%, #92FE9D 100%);
+    /* Botones principales */
+    .stButton>button {{
+        background-color: #007BFF;
         border: none;
-        border-radius: 30px;
-        color: #1a1a1a !important;
-        font-weight: 800;
+        border-radius: 8px;
+        color: #FFFFFF !important;
+        font-weight: 600;
         transition: all 0.3s ease;
-        height: 60px;
+        height: 50px;
         width: 100%;
-        box-shadow: 0 4px 15px rgba(0, 201, 255, 0.4);
-    }
-    .stButton>button:hover {
-        transform: translateY(-3px) scale(1.02);
-        box-shadow: 0 8px 25px rgba(0, 201, 255, 0.6);
-    }
+    }}
+    .stButton>button:hover {{
+        background-color: #0056b3;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 10px rgba(0, 123, 255, 0.3);
+    }}
 
-    /* Modificar los cuadros de subida de archivos (menos formulario, más botón) */
-    .stFileUploader>div>div {
-        background: rgba(0,0,0,0.2) !important;
-        border-radius: 15px !important;
-        border: 2px dashed rgba(255,255,255,0.3) !important;
-    }
-
-    /* ANIMACIÓN DE MOKKITA FLOTANTE EN LA ESQUINA */
-    @keyframes flotar {
-        0% { transform: translateY(0px); }
-        50% { transform: translateY(-15px); }
-        100% { transform: translateY(0px); }
-    }
-    .mokkita-bot {
+    /* ANIMACIÓN DE MOKKITA REAL FLOTANTE */
+    @keyframes flotar {{
+        0% {{ transform: translateY(0px); }}
+        50% {{ transform: translateY(-10px); }}
+        100% {{ transform: translateY(0px); }}
+    }}
+    .mokkita-bot {{
         position: fixed;
         bottom: 30px;
         right: 30px;
-        font-size: 70px;
-        animation: flotar 3s ease-in-out infinite;
+        width: 100px;
+        height: 100px;
+        background-image: url('{URL_IMAGEN_MOKKITA}');
+        background-size: cover;
+        background-position: center;
+        border-radius: 50%;
+        box-shadow: 0px 8px 20px rgba(0,0,0,0.2);
+        animation: flotar 3.5s ease-in-out infinite;
         z-index: 9999;
         cursor: pointer;
-        text-shadow: 0px 10px 20px rgba(0,0,0,0.5);
-    }
-    .mokkita-dialogo {
+        border: 3px solid #FFFFFF;
+    }}
+    .mokkita-dialogo {{
         position: fixed;
-        bottom: 120px;
+        bottom: 140px;
         right: 40px;
-        background: rgba(255,255,255,0.9);
-        color: #000;
-        padding: 10px 15px;
-        border-radius: 15px;
+        background: #FFFFFF;
+        color: #2C3E50;
+        padding: 12px 18px;
+        border-radius: 12px;
         font-weight: bold;
         z-index: 9998;
         opacity: 0;
         transition: opacity 0.3s;
-        box-shadow: 0px 5px 15px rgba(0,0,0,0.3);
-    }
-    .mokkita-bot:hover + .mokkita-dialogo {
+        box-shadow: 0px 5px 15px rgba(0,0,0,0.1);
+        border: 1px solid #E9ECEF;
+        pointer-events: none;
+    }}
+    .mokkita-dialogo::after {{
+        content: '';
+        position: absolute;
+        bottom: -10px;
+        right: 40px;
+        border-width: 10px 10px 0;
+        border-style: solid;
+        border-color: #FFFFFF transparent transparent transparent;
+        display: block;
+        width: 0;
+    }}
+    .mokkita-bot:hover + .mokkita-dialogo {{
         opacity: 1;
-    }
+    }}
 </style>
 
-<!-- Widget HTML inyectado de Mokkita -->
-<div class="mokkita-bot">🦔</div>
-<div class="mokkita-dialogo">¡Hola! Soy Mokkita.<br>Sube tu trabajo aquí.</div>
+<div class="mokkita-bot"></div>
+<div class="mokkita-dialogo">¡Hola! Sube tu trabajo aquí<br>para que lo revisemos.</div>
 """, unsafe_allow_html=True)
 
 # --- ARCHIVOS DE CONFIGURACIÓN LOCAL ---
@@ -108,15 +132,15 @@ def registrar_estadistica(usuario, accion):
     datos.append(registro)
     with open(STATS_FILE, "w") as f: json.dump(datos, f)
 
-# Prompt por defecto muy afinado a tu contexto
-PROMPT_POR_DEFECTO = """Eres Mokkita, un erizo intelectual con lentes que actúa como profesor supervisor clínico. 
-Tu tarea es evaluar el trabajo de defensa de grado del estudiante.
-Evalúa la articulación teórica (especialmente si usa constructivismo intersubjetivo o dinámica relacional) y la coherencia del análisis del caso.
-Estructura:
-1. 🎯 VEREDICTO DE MOKKITA
-2. ✅ PUNTOS FUERTES
-3. 🛠️ ÁREAS DE MEJORA
-4. 💡 RECOMENDACIÓN CLÍNICA"""
+# Prompt imparcial, evaluando la coherencia interna del paradigma del estudiante
+PROMPT_POR_DEFECTO = """Eres Mokkita, un erizo intelectual que usa lentes y un chaleco. Eres un profesor supervisor clínico estricto, riguroso e imparcial.
+Tu tarea es evaluar trabajos de defensa de grado de estudiantes de psicología, sin importar su corriente teórica.
+Debes identificar el paradigma o marco teórico que el estudiante presenta en su texto y evaluar críticamente la coherencia interna, la articulación clínica del caso y la solidez argumentativa en base a ese mismo marco elegido por el alumno.
+Estructura tu respuesta así:
+1. 🎯 VEREDICTO CLÍNICO DE MOKKITA
+2. ✅ PUNTOS FUERTES (Aciertos teóricos y metodológicos)
+3. 🛠️ ÁREAS DE MEJORA (Incoherencias o fallos en la articulación de su propio paradigma)
+4. 💡 RECOMENDACIÓN PARA LA DEFENSA"""
 
 def obtener_prompt():
     if os.path.exists(PROMPT_FILE):
@@ -133,23 +157,25 @@ if "usuario_actual" not in st.session_state: st.session_state["usuario_actual"] 
 def mostrar_login():
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        st.markdown("<h1 style='text-align: center; font-size: 3rem;'>Plataforma Mokkita</h1>", unsafe_allow_html=True)
-        st.markdown("<p style='text-align: center; color: #a8b2d1;'>Defensa de Grado & Análisis Clínico</p><br>", unsafe_allow_html=True)
+        st.markdown("<h1 style='text-align: center; font-size: 2.5rem; margin-bottom: 5px;'>Plataforma Mokkita</h1>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align: center; color: #6c757d; margin-bottom: 30px;'>Defensa de Grado & Análisis Clínico</p>", unsafe_allow_html=True)
         
-        usuario = st.text_input("👤 Usuario").strip().lower()
-        clave = st.text_input("🔑 Contraseña", type="password")
-        if st.button("Ingresar al Portal"):
-            try:
-                usuarios_permitidos = st.secrets["usuarios"]
-                if usuario in usuarios_permitidos and usuarios_permitidos[usuario] == clave:
-                    st.session_state["autenticado"] = True
-                    st.session_state["usuario_actual"] = usuario
-                    registrar_estadistica(usuario, "Login")
-                    st.rerun()
-                else:
-                    st.error("❌ Credenciales incorrectas.")
-            except KeyError:
-                st.error("Error en secrets.")
+        with st.container():
+            usuario = st.text_input("👤 Usuario").strip().lower()
+            clave = st.text_input("🔑 Contraseña", type="password")
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("Ingresar al Portal"):
+                try:
+                    usuarios_permitidos = st.secrets["usuarios"]
+                    if usuario in usuarios_permitidos and usuarios_permitidos[usuario] == clave:
+                        st.session_state["autenticado"] = True
+                        st.session_state["usuario_actual"] = usuario
+                        registrar_estadistica(usuario, "Login")
+                        st.rerun()
+                    else:
+                        st.error("❌ Credenciales incorrectas.")
+                except KeyError:
+                    st.error("Error en secrets.")
 
 # --- APLICACIÓN PRINCIPAL ---
 def mostrar_aplicacion():
@@ -163,23 +189,23 @@ def mostrar_aplicacion():
         st.rerun()
 
     if st.session_state["usuario_actual"] == "claudio":
-        tab1, tab2 = st.tabs(["📝 Análisis Trabajo Final Defensa de Grado", "⚙️ Dashboard Admin (Oculto)"])
+        tab1, tab2 = st.tabs(["📝 Análisis Trabajo Final", "⚙️ Dashboard Admin (Oculto)"])
     else:
-        tab1, = st.tabs(["📝 Análisis Trabajo Final Defensa de Grado"])
+        tab1, = st.tabs(["📝 Análisis Trabajo Final"])
 
     # --- PESTAÑA 1: REVISIÓN ---
     with tab1:
-        st.markdown("<h2 style='text-align: center; margin-bottom: 30px;'>Análisis Trabajo Final Defensa de Grado</h2>", unsafe_allow_html=True)
+        st.markdown("<h2 style='text-align: center; margin-bottom: 30px;'>Análisis de Defensa de Grado</h2>", unsafe_allow_html=True)
         
         col_opciones, col_archivos = st.columns([1, 2])
         
         with col_opciones:
-            st.markdown("### 🎛️ Parámetros")
+            st.markdown("#### 🎛️ Parámetros")
             nivel_teorico = st.slider("Exigencia Teórica", 1, 5, 4)
-            enfoque_feedback = st.selectbox("Personalidad de Mokkita", ["Académico y Estricto", "Constructivo", "Directo e Irónico"])
+            enfoque_feedback = st.selectbox("Tono de Mokkita", ["Académico y Directo", "Constructivo", "Irónico y Agudo"])
             
         with col_archivos:
-            st.markdown("### 📄 Documentos")
+            st.markdown("#### 📄 Documentos")
             archivo_trabajo = st.file_uploader("Sube el Trabajo del Estudiante (Requerido)", type=["pdf", "txt", "docx"])
             with st.expander("Opcional: Subir Pauta o Autor de referencia"):
                 archivo_autor = st.file_uploader("Material Base", type=["pdf", "txt"])
@@ -190,7 +216,7 @@ def mostrar_aplicacion():
             if st.button("Iniciar Evaluación con Mokkita"):
                 registrar_estadistica(st.session_state["usuario_actual"], "Evaluación Generada")
                 
-                with st.spinner("Mokkita está leyendo meticulosamente tu trabajo..."):
+                with st.spinner("Mokkita está ajustándose los lentes y leyendo el trabajo..."):
                     archivos_temporales = []
                     archivos_gemini = []
                     try:
@@ -211,14 +237,13 @@ def mostrar_aplicacion():
                         g_trabajo = procesar_archivo(archivo_trabajo)
                         g_autor = procesar_archivo(archivo_autor)
 
-                        # Armamos las instrucciones dinámicas
                         prompt_base = obtener_prompt()
                         instrucciones = f"{prompt_base}\n\nTono solicitado: {enfoque_feedback}.\nNivel de exigencia (1-5): {nivel_teorico}."
                         
                         modelo = genai.GenerativeModel(model_name="gemini-1.5-pro", system_instruction=instrucciones)
                         
                         contenido_a_enviar = [g_trabajo]
-                        texto_solicitud = "Analiza este trabajo de grado."
+                        texto_solicitud = "Analiza de manera crítica e imparcial este trabajo de grado."
                         if g_autor:
                             contenido_a_enviar.insert(0, g_autor)
                             texto_solicitud = "Analiza el trabajo del estudiante comparándolo con el material del autor adjunto."
@@ -228,7 +253,7 @@ def mostrar_aplicacion():
                         respuesta = modelo.generate_content(contenido_a_enviar)
                         
                         st.success("✨ ¡Análisis completado!")
-                        with st.chat_message("Mokkita", avatar="🦔"):
+                        with st.chat_message("Mokkita", avatar=URL_IMAGEN_MOKKITA):
                             st.markdown(respuesta.text)
                             st.download_button("💾 Descargar Evaluación Completa", respuesta.text, file_name=f"Evaluacion_Grado_{st.session_state['usuario_actual']}.md")
                             
@@ -247,13 +272,13 @@ def mostrar_aplicacion():
             st.header("Centro de Mando Administrativo")
             
             st.subheader("🧠 Modificar el Cerebro de Mokkita")
-            st.info("Aquí puedes reescribir las instrucciones base que Gemini usa para actuar como Mokkita. Los cambios aplican inmediatamente para todos.")
+            st.info("Aquí puedes reescribir las instrucciones base. Se aplicarán para todos los usuarios.")
             prompt_actual = obtener_prompt()
-            nuevo_prompt = st.text_area("Instrucciones del Sistema (System Prompt)", value=prompt_actual, height=200)
+            nuevo_prompt = st.text_area("Instrucciones del Sistema", value=prompt_actual, height=250)
             
             if st.button("Guardar Nueva Personalidad"):
                 guardar_prompt(nuevo_prompt)
-                st.success("¡El cerebro de Mokkita ha sido actualizado con éxito!")
+                st.success("¡El cerebro de Mokkita ha sido actualizado!")
 
             st.markdown("---")
             st.subheader("📊 Estadísticas de Uso")
@@ -263,6 +288,5 @@ def mostrar_aplicacion():
             else:
                 st.write("Aún no hay datos.")
 
-# --- INICIO ---
 if not st.session_state["autenticado"]: mostrar_login()
 else: mostrar_aplicacion()
