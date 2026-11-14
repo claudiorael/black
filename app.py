@@ -5,29 +5,24 @@ import os
 import time
 import json
 import random
+import pytz
+import pandas as pd
 from datetime import datetime
 from docx import Document
 import io
 
-# --- 1. CONFIGURACIÓN DE PÁGINA (WIDE = ANCHO COMPLETO) ---
+# --- 1. CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(page_title="Portal Mokkita", page_icon="🦔", layout="wide")
 
-# La URL directa a tu imagen en GitHub
 URL_MOKKITA = "https://raw.githubusercontent.com/claudiorael/black/main/mokkita.png"
 
-# --- 2. SÚPER CSS PARA UI MODERNA Y MOKKITA FLOTANTE ---
+# --- 2. CSS PARA UI MODERNA Y MOKKITA FLOTANTE ---
 st.markdown(f"""
 <style>
-    /* Fondo de la aplicación con un gradiente suave y profesional */
-    .stApp {{
-        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-    }}
-    
-    /* Ocultar elementos nativos de Streamlit */
+    .stApp {{ background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); }}
     header {{ display: none !important; }}
     footer {{ display: none !important; }}
     
-    /* Crear el efecto de Tarjetas (Cards) para los bloques de contenido */
     .css-1r6slb0, .st-emotion-cache-1r6slb0, .st-emotion-cache-1v0mbdj {{
         background: rgba(255, 255, 255, 0.85) !important;
         backdrop-filter: blur(10px);
@@ -38,89 +33,38 @@ st.markdown(f"""
         margin-bottom: 20px;
     }}
 
-    /* Estilizar Títulos */
-    h1, h2, h3, h4 {{
-        color: #1e293b !important;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        font-weight: 800;
-    }}
+    h1, h2, h3, h4 {{ color: #1e293b !important; font-family: 'Segoe UI', sans-serif; font-weight: 800; }}
 
-    /* Botones de Acción Atractivos */
     .stButton>button {{
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white !important;
-        border: none;
-        border-radius: 12px;
-        padding: 15px;
-        font-size: 18px;
-        font-weight: bold;
-        box-shadow: 0 4px 15px rgba(118, 75, 162, 0.4);
-        transition: all 0.3s ease;
-        width: 100%;
-        height: 60px;
+        color: white !important; border: none; border-radius: 12px; padding: 15px;
+        font-size: 18px; font-weight: bold; box-shadow: 0 4px 15px rgba(118, 75, 162, 0.4);
+        transition: all 0.3s ease; width: 100%; height: 60px;
     }}
-    .stButton>button:hover {{
-        transform: translateY(-3px);
-        box-shadow: 0 8px 25px rgba(118, 75, 162, 0.6);
-    }}
+    .stButton>button:hover {{ transform: translateY(-3px); box-shadow: 0 8px 25px rgba(118, 75, 162, 0.6); }}
 
-    /* --- MOKKITA FLOTANTE --- */
-    @keyframes flotar {{
-        0% {{ transform: translateY(0px); }}
-        50% {{ transform: translateY(-12px); }}
-        100% {{ transform: translateY(0px); }}
-    }}
-    .bot-container {{
-        position: fixed;
-        bottom: 30px;
-        right: 30px;
-        z-index: 999999;
-        display: flex;
-        flex-direction: column;
-        align-items: flex-end;
-        pointer-events: none;
-    }}
-    .bot-bubble {{
-        background: white;
-        color: #1e293b;
-        padding: 15px 20px;
-        border-radius: 20px 20px 0px 20px;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.15);
-        margin-bottom: 15px;
-        font-weight: 700;
-        font-size: 15px;
-        max-width: 250px;
-        text-align: right;
-        border: 2px solid #e2e8f0;
-        animation: flotar 4s ease-in-out infinite;
-        pointer-events: auto;
-    }}
-    .bot-img {{
-        width: 145px; /* Aumentado en un 30% (antes 110px) */
-        height: 145px; /* Aumentado en un 30% (antes 110px) */
-        background-color: white;
-        background-image: url('{URL_MOKKITA}');
-        background-size: cover;
-        background-position: center;
-        border-radius: 50%;
-        border: 4px solid white;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-        animation: flotar 4s ease-in-out infinite;
-        animation-delay: 0.2s;
-        pointer-events: auto;
-        cursor: pointer;
-        transition: transform 0.3s;
-    }}
+    @keyframes flotar {{ 0% {{ transform: translateY(0px); }} 50% {{ transform: translateY(-12px); }} 100% {{ transform: translateY(0px); }} }}
+    .bot-container {{ position: fixed; bottom: 30px; right: 30px; z-index: 999999; display: flex; flex-direction: column; align-items: flex-end; pointer-events: none; }}
+    .bot-bubble {{ background: white; color: #1e293b; padding: 15px 20px; border-radius: 20px 20px 0px 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); margin-bottom: 15px; font-weight: 700; font-size: 15px; max-width: 250px; text-align: right; border: 2px solid #e2e8f0; animation: flotar 4s ease-in-out infinite; pointer-events: auto; }}
+    .bot-img {{ width: 145px; height: 145px; background-color: white; background-image: url('{URL_MOKKITA}'); background-size: cover; background-position: center; border-radius: 50%; border: 4px solid white; box-shadow: 0 10px 25px rgba(0,0,0,0.2); animation: flotar 4s ease-in-out infinite; animation-delay: 0.2s; pointer-events: auto; cursor: pointer; transition: transform 0.3s; }}
     .bot-img:hover {{ transform: scale(1.1); }}
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. ARCHIVOS Y LÓGICA DE DATOS ---
+# --- 3. ARCHIVOS Y LÓGICA DE DATOS ESTADÍSTICOS ---
 STATS_FILE = "mokkita_stats.json"
 PROMPT_FILE = "mokkita_prompt.json"
+ZONA_HORARIA = pytz.timezone('America/Santiago')
 
-def registrar_estadistica(usuario, accion):
-    registro = {"usuario": usuario, "fecha_hora": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "accion": accion}
+def registrar_estadistica(usuario, accion, nombres_archivos="", cantidad_archivos=0, tiempo_sesion=0):
+    registro = {
+        "usuario": usuario, 
+        "fecha_hora": datetime.now(ZONA_HORARIA).strftime("%Y-%m-%d %H:%M:%S"), 
+        "accion": accion,
+        "nombres_archivos": nombres_archivos,
+        "cantidad_archivos": cantidad_archivos if cantidad_archivos > 0 else "",
+        "minutos_en_sesion": round(tiempo_sesion, 2) if tiempo_sesion > 0 else ""
+    }
     datos = []
     if os.path.exists(STATS_FILE):
         with open(STATS_FILE, "r") as f: datos = json.load(f)
@@ -146,60 +90,16 @@ def guardar_prompt(nuevo_prompt):
 def renderizar_globo(usuario):
     frases = [
         f"¡Vamos {usuario.capitalize()}! Sube ese trabajo.",
-        "Un buen marco teórico lo es todo. ¡Revisemos!",
         "La clínica requiere rigor. Ponme a prueba.",
         "Acomoda tus ideas, yo me ajusto los lentes.",
         "¡Respira profundo! Aquí estoy para ayudarte.",
-        "La intersubjetividad empieza aquí. ¡Sube tu archivo!",
-        "Todo gran analista empezó con un buen borrador.",
-        "Confía en tu proceso, revisaremos los detalles.",
-        "Estructura, coherencia y rigor. ¡A trabajar!",
-        "Tu marco teórico es tu brújula. Veamos hacia dónde apunta.",
-        "No hay errores, solo oportunidades de articulación clínica.",
-        "Cada caso clínico tiene su propia melodía. Escuchémosla.",
-        "Mokkita al rescate de la metapsicología.",
-        "¡Ánimo! El psicoanálisis también toma su tiempo.",
-        "Que no decaiga esa motivación, ¡ya casi lo tienes!",
-        "El constructivismo nos enseña que construimos este éxito juntos.",
-        "Lentes limpios, mente clara. ¡Sube tu trabajo!",
-        "Un buen encuadre salva cualquier defensa de grado.",
-        "¡Excelente día para cuestionar paradigmas!",
         "El saber clínico se pule revisando y reescribiendo.",
-        "Tus hipótesis clínicas son el motor de tu tesis.",
-        "¡Adelante! Demuestra lo que has aprendido estos años.",
-        "La psicología es un arte, y tu tesis es tu lienzo.",
-        "Analicemos esos conceptos clave con lupa de erizo.",
-        "Tranquilidad, el comité evaluador no muerde. (Yo tampoco).",
-        "¡Fuerza! La redacción académica es un músculo que se entrena.",
-        "Aquí no juzgamos, solo fortalecemos tu argumento.",
-        "¡Vamos, colega! El título te está esperando.",
-        "Reflexión, análisis y síntesis. Esa es la receta.",
-        "Las dinámicas relacionales también aplican a tu escritura.",
-        "Inhala, exhala y dale al botón de subir.",
-        "Tu defensa será tan sólida como tu articulación teórica.",
-        "¡Concéntrate! Mokkita te cubre la espalda.",
-        "Toda gran tesis comienza con un 'Archivo subido'.",
-        "La clínica del caso uno a uno. Revisemos el tuyo.",
-        "Sostener la mirada clínica requiere valentía. ¡Tú la tienes!",
-        "La transferencia en el texto es vital. Analicémosla.",
-        "Tus ideas tienen mucho valor, démosle forma.",
-        "¡A afilar esas viñetas clínicas!",
-        "El título de psicólogo está a unos pocos párrafos de distancia.",
-        "Cuestiona todo, menos tu capacidad para lograr esto.",
-        "Mokkita está listo para el desafío intelectual.",
-        "La coherencia epistemológica es nuestra meta de hoy.",
-        "¡Vamos! Un paso más cerca del cierre de ciclo.",
-        "Tu esfuerzo se materializa en este texto.",
-        "Analizar, comprender y transformar. ¡Aplica a tu tesis!",
-        "Revisión exhaustiva en marcha. Pon tu archivo a prueba.",
-        "Un diagnóstico claro del texto nos dará la solución.",
-        "Tómate tu tiempo, Mokkita tiene paciencia clínica.",
-        "Recuerda: la escucha analítica empieza leyendo entre líneas."
+        "Estructura, coherencia y rigor. ¡A trabajar!",
+        "Tu marco teórico es tu brújula. Veamos hacia dónde apunta."
     ]
-    mensaje = random.choice(frases)
     st.markdown(f"""
         <div class="bot-container">
-            <div class="bot-bubble">{mensaje}</div>
+            <div class="bot-bubble">{random.choice(frases)}</div>
             <div class="bot-img" title="Mokkita está listo para evaluar"></div>
         </div>
     """, unsafe_allow_html=True)
@@ -207,8 +107,9 @@ def renderizar_globo(usuario):
 # --- 4. SESIÓN Y ESTADO ---
 if "autenticado" not in st.session_state: st.session_state["autenticado"] = False
 if "usuario_actual" not in st.session_state: st.session_state["usuario_actual"] = None
+if "login_time" not in st.session_state: st.session_state["login_time"] = None
 
-# --- 5. LOGIN (DISEÑO CENTRADO) ---
+# --- 5. LOGIN ---
 def mostrar_login():
     st.markdown("<br><br><br>", unsafe_allow_html=True)
     _, col_centro, _ = st.columns([1, 1, 1]) 
@@ -227,6 +128,7 @@ def mostrar_login():
                 if usuario in usuarios_permitidos and usuarios_permitidos[usuario] == clave:
                     st.session_state["autenticado"] = True
                     st.session_state["usuario_actual"] = usuario
+                    st.session_state["login_time"] = time.time()
                     registrar_estadistica(usuario, "Login")
                     st.rerun()
                 else:
@@ -237,23 +139,22 @@ def mostrar_login():
 # --- 6. APP PRINCIPAL ---
 def mostrar_aplicacion():
     genai.configure(api_key=st.secrets["gemini"]["api_key"])
-    
-    # Inyectar Mokkita flotante
     renderizar_globo(st.session_state["usuario_actual"])
 
-    # Header de sesión
+    # Header de sesión y Cierre
     col_user, col_btn = st.columns([8, 2])
     with col_user:
         st.markdown(f"### 👤 Bienvenido(a), {st.session_state['usuario_actual'].capitalize()}")
     with col_btn:
         if st.button("Cerrar Sesión"):
-            registrar_estadistica(st.session_state["usuario_actual"], "Logout")
+            tiempo_total = (time.time() - st.session_state["login_time"]) / 60
+            registrar_estadistica(st.session_state["usuario_actual"], "Logout", tiempo_sesion=tiempo_total)
             st.session_state["autenticado"] = False
             st.session_state["usuario_actual"] = None
+            st.session_state["login_time"] = None
             st.rerun()
     st.markdown("---")
 
-    # Pestañas
     if st.session_state["usuario_actual"] == "claudio":
         tab_revisor, tab_admin = st.tabs(["🎓 Workspace Académico", "⚙️ Administración (Mokkita)"])
     else:
@@ -262,7 +163,6 @@ def mostrar_aplicacion():
     with tab_revisor:
         st.markdown("## Análisis de Defensa de Grado")
         
-        # Bloque de Configuración
         st.markdown("#### 1. Configuración de Mokkita")
         col_tono, col_nivel = st.columns(2)
         with col_tono:
@@ -271,8 +171,6 @@ def mostrar_aplicacion():
             nivel_teorico = st.slider("Nivel de Exigencia (1 al 5)", 1, 5, 4)
             
         st.markdown("<br>", unsafe_allow_html=True)
-
-        # Bloque de Documentos (Solo PDF y TXT permitidos para evitar el error 500)
         st.markdown("#### 2. Carga de Documentos")
         col_trabajo, col_autor = st.columns(2)
         with col_trabajo:
@@ -282,10 +180,19 @@ def mostrar_aplicacion():
 
         st.markdown("<br>", unsafe_allow_html=True)
         
-        # Botón de Acción
         if archivo_trabajo:
             if st.button("✨ Generar Evaluación con Mokkita"):
-                registrar_estadistica(st.session_state["usuario_actual"], "Evaluación Generada")
+                
+                # --- REGISTRO DE ARCHIVOS SUBIDOS ---
+                lista_nombres = [archivo_trabajo.name]
+                if archivo_autor: lista_nombres.append(archivo_autor.name)
+                
+                registrar_estadistica(
+                    st.session_state["usuario_actual"], 
+                    "Evaluación Generada", 
+                    nombres_archivos=", ".join(lista_nombres), 
+                    cantidad_archivos=len(lista_nombres)
+                )
                 
                 with st.spinner("Mokkita está leyendo el documento con detención..."):
                     archivos_temporales = []
@@ -311,18 +218,11 @@ def mostrar_aplicacion():
                         prompt_base = obtener_prompt()
                         instrucciones = f"{prompt_base}\n\nTono solicitado: {enfoque_feedback}.\nNivel de exigencia (1-5): {nivel_teorico}."
                         
-                        # --- BÚSQUEDA DINÁMICA INFALIBLE ---
-                        modelos_permitidos = [
-                            m.name.replace("models/", "") 
-                            for m in genai.list_models() 
-                            if 'generateContent' in m.supported_generation_methods
-                        ]
-                        
+                        modelos_permitidos = [m.name.replace("models/", "") for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
                         if not modelos_permitidos:
-                            st.error("Tu API Key no tiene modelos habilitados. Por favor, revisa tu clave en Google AI Studio.")
+                            st.error("Tu API Key no tiene modelos habilitados.")
                             st.stop()
                             
-                        # Elegir el mejor modelo disponible
                         modelo_elegido = modelos_permitidos[0]
                         for m in modelos_permitidos:
                             if "1.5-pro" in m:
@@ -333,7 +233,6 @@ def mostrar_aplicacion():
                         
                         modelo = genai.GenerativeModel(model_name=modelo_elegido, system_instruction=instrucciones)
                         
-                        # --- PREPARAR CONTENIDO ---
                         contenido = [g_trabajo]
                         if g_autor:
                             contenido.insert(0, g_autor)
@@ -348,25 +247,18 @@ def mostrar_aplicacion():
                         st.markdown(respuesta.text)
                         st.markdown("</div><br>", unsafe_allow_html=True)
                         
-                        # --- GENERAR ARCHIVO WORD LÍMPIO ---
                         def crear_word(texto_respuesta):
                             doc = Document()
                             doc.add_heading('Análisis de Defensa de Grado - Mokkita', 0)
-                            
-                            # Limpiar los asteriscos de Markdown para el Word
                             texto_limpio = texto_respuesta.replace('**', '') 
-                            
                             for linea in texto_limpio.split('\n'):
-                                if linea.strip():
-                                    doc.add_paragraph(linea)
-                                    
+                                if linea.strip(): doc.add_paragraph(linea)
                             buffer = io.BytesIO()
                             doc.save(buffer)
                             buffer.seek(0)
                             return buffer
 
                         archivo_word = crear_word(respuesta.text)
-                        
                         st.download_button(
                             label="💾 Descargar Evaluación en Word",
                             data=archivo_word,
@@ -385,23 +277,37 @@ def mostrar_aplicacion():
         else:
             st.info("👆 Sube un trabajo de grado (formato PDF o TXT) en el paso 2 para habilitar el motor de análisis.")
 
-    # --- PESTAÑA ADMIN ---
+    # --- PESTAÑA ADMIN Y BASE DE DATOS EDITABLE ---
     if st.session_state["usuario_actual"] == "claudio":
         with tab_admin:
             st.markdown("### 🧠 Centro de Mando Mokkita")
-            nuevo_prompt = st.text_area("Instrucciones del Sistema (System Prompt)", value=obtener_prompt(), height=200)
+            nuevo_prompt = st.text_area("Instrucciones del Sistema (System Prompt)", value=obtener_prompt(), height=150)
             if st.button("Guardar Nueva Personalidad"):
                 guardar_prompt(nuevo_prompt)
                 st.success("¡Cerebro actualizado para todos los usuarios!")
             
             st.markdown("---")
-            st.markdown("### 📊 Registro de Uso")
+            st.markdown("### 📊 Base de Datos de Uso (Editable)")
+            st.info("💡 Haz clic en la casilla izquierda de cualquier fila y presiona **Suprimir** en tu teclado para borrar registros, o edita directamente. Guarda los cambios abajo.")
+            
             if os.path.exists(STATS_FILE):
                 with open(STATS_FILE, "r") as f:
-                    st.dataframe(json.load(f), use_container_width=True)
+                    datos_estadisticas = json.load(f)
+                
+                if datos_estadisticas:
+                    df = pd.DataFrame(datos_estadisticas)
+                    # Data_editor permite eliminar filas y modificar datos como en Excel
+                    edited_df = st.data_editor(df, num_rows="dynamic", use_container_width=True)
+                    
+                    if st.button("💾 Guardar Cambios en la Base de Datos"):
+                        with open(STATS_FILE, "w") as f:
+                            json.dump(edited_df.to_dict(orient="records"), f)
+                        st.success("¡Base de datos actualizada!")
+                else:
+                    st.write("Aún no hay registros guardados.")
+            else:
+                st.write("Aún no hay registros guardados.")
 
 # --- INICIO ---
-if not st.session_state["autenticado"]: 
-    mostrar_login()
-else: 
-    mostrar_aplicacion()
+if not st.session_state["autenticado"]: mostrar_login()
+else: mostrar_aplicacion()
