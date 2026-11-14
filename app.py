@@ -228,7 +228,7 @@ def mostrar_aplicacion():
         st.markdown("#### 2. Carga de Documentos")
         col_trabajo, col_autor = st.columns(2)
         with col_trabajo:
-            archivo_trabajo = st.file_uploader("📄 Sube el Trabajo (Requerido)", type=["pdf", "txt", "docx"])
+            archivo_trabajo = st.file_uploader("📄 Sube el Trabajo (Requerido)", type=["pdf", "txt"])
         with col_autor:
             archivo_autor = st.file_uploader("📚 Material del Autor (Opcional)", type=["pdf", "txt"])
 
