@@ -6,6 +6,8 @@ import time
 import json
 import random
 from datetime import datetime
+from docx import Document
+import io
 
 # --- 1. CONFIGURACIÓN DE PÁGINA (WIDE = ANCHO COMPLETO) ---
 st.set_page_config(page_title="Portal Mokkita", page_icon="🦔", layout="wide")
@@ -94,8 +96,8 @@ st.markdown(f"""
         pointer-events: auto;
     }}
     .bot-img {{
-        width: 110px;
-        height: 110px;
+        width: 145px; /* Aumentado en un 30% (antes 110px) */
+        height: 145px; /* Aumentado en un 30% (antes 110px) */
         background-color: white;
         background-image: url('{URL_MOKKITA}');
         background-size: cover;
@@ -146,7 +148,53 @@ def renderizar_globo(usuario):
         f"¡Vamos {usuario.capitalize()}! Sube ese trabajo.",
         "Un buen marco teórico lo es todo. ¡Revisemos!",
         "La clínica requiere rigor. Ponme a prueba.",
-        "Acomoda tus ideas, yo me ajusto los lentes."
+        "Acomoda tus ideas, yo me ajusto los lentes.",
+        "¡Respira profundo! Aquí estoy para ayudarte.",
+        "La intersubjetividad empieza aquí. ¡Sube tu archivo!",
+        "Todo gran analista empezó con un buen borrador.",
+        "Confía en tu proceso, revisaremos los detalles.",
+        "Estructura, coherencia y rigor. ¡A trabajar!",
+        "Tu marco teórico es tu brújula. Veamos hacia dónde apunta.",
+        "No hay errores, solo oportunidades de articulación clínica.",
+        "Cada caso clínico tiene su propia melodía. Escuchémosla.",
+        "Mokkita al rescate de la metapsicología.",
+        "¡Ánimo! El psicoanálisis también toma su tiempo.",
+        "Que no decaiga esa motivación, ¡ya casi lo tienes!",
+        "El constructivismo nos enseña que construimos este éxito juntos.",
+        "Lentes limpios, mente clara. ¡Sube tu trabajo!",
+        "Un buen encuadre salva cualquier defensa de grado.",
+        "¡Excelente día para cuestionar paradigmas!",
+        "El saber clínico se pule revisando y reescribiendo.",
+        "Tus hipótesis clínicas son el motor de tu tesis.",
+        "¡Adelante! Demuestra lo que has aprendido estos años.",
+        "La psicología es un arte, y tu tesis es tu lienzo.",
+        "Analicemos esos conceptos clave con lupa de erizo.",
+        "Tranquilidad, el comité evaluador no muerde. (Yo tampoco).",
+        "¡Fuerza! La redacción académica es un músculo que se entrena.",
+        "Aquí no juzgamos, solo fortalecemos tu argumento.",
+        "¡Vamos, colega! El título te está esperando.",
+        "Reflexión, análisis y síntesis. Esa es la receta.",
+        "Las dinámicas relacionales también aplican a tu escritura.",
+        "Inhala, exhala y dale al botón de subir.",
+        "Tu defensa será tan sólida como tu articulación teórica.",
+        "¡Concéntrate! Mokkita te cubre la espalda.",
+        "Toda gran tesis comienza con un 'Archivo subido'.",
+        "La clínica del caso uno a uno. Revisemos el tuyo.",
+        "Sostener la mirada clínica requiere valentía. ¡Tú la tienes!",
+        "La transferencia en el texto es vital. Analicémosla.",
+        "Tus ideas tienen mucho valor, démosle forma.",
+        "¡A afilar esas viñetas clínicas!",
+        "El título de psicólogo está a unos pocos párrafos de distancia.",
+        "Cuestiona todo, menos tu capacidad para lograr esto.",
+        "Mokkita está listo para el desafío intelectual.",
+        "La coherencia epistemológica es nuestra meta de hoy.",
+        "¡Vamos! Un paso más cerca del cierre de ciclo.",
+        "Tu esfuerzo se materializa en este texto.",
+        "Analizar, comprender y transformar. ¡Aplica a tu tesis!",
+        "Revisión exhaustiva en marcha. Pon tu archivo a prueba.",
+        "Un diagnóstico claro del texto nos dará la solución.",
+        "Tómate tu tiempo, Mokkita tiene paciencia clínica.",
+        "Recuerda: la escucha analítica empieza leyendo entre líneas."
     ]
     mensaje = random.choice(frases)
     st.markdown(f"""
@@ -224,13 +272,13 @@ def mostrar_aplicacion():
             
         st.markdown("<br>", unsafe_allow_html=True)
 
-        # Bloque de Documentos
+        # Bloque de Documentos (Solo PDF y TXT permitidos para evitar el error 500)
         st.markdown("#### 2. Carga de Documentos")
         col_trabajo, col_autor = st.columns(2)
         with col_trabajo:
-            archivo_trabajo = st.file_uploader("📄 Sube el Trabajo (Requerido)", type=["pdf", "txt"])
+            archivo_trabajo = st.file_uploader("📄 Sube el Trabajo (Requerido - PDF/TXT)", type=["pdf", "txt"])
         with col_autor:
-            archivo_autor = st.file_uploader("📚 Material del Autor (Opcional)", type=["pdf", "txt"])
+            archivo_autor = st.file_uploader("📚 Material del Autor (Opcional - PDF/TXT)", type=["pdf", "txt"])
 
         st.markdown("<br>", unsafe_allow_html=True)
         
@@ -300,7 +348,31 @@ def mostrar_aplicacion():
                         st.markdown(respuesta.text)
                         st.markdown("</div><br>", unsafe_allow_html=True)
                         
-                        st.download_button("💾 Descargar Evaluación Completa", respuesta.text, file_name=f"Evaluacion_{st.session_state['usuario_actual']}.md")
+                        # --- GENERAR ARCHIVO WORD LÍMPIO ---
+                        def crear_word(texto_respuesta):
+                            doc = Document()
+                            doc.add_heading('Análisis de Defensa de Grado - Mokkita', 0)
+                            
+                            # Limpiar los asteriscos de Markdown para el Word
+                            texto_limpio = texto_respuesta.replace('**', '') 
+                            
+                            for linea in texto_limpio.split('\n'):
+                                if linea.strip():
+                                    doc.add_paragraph(linea)
+                                    
+                            buffer = io.BytesIO()
+                            doc.save(buffer)
+                            buffer.seek(0)
+                            return buffer
+
+                        archivo_word = crear_word(respuesta.text)
+                        
+                        st.download_button(
+                            label="💾 Descargar Evaluación en Word",
+                            data=archivo_word,
+                            file_name=f"Evaluacion_{st.session_state['usuario_actual']}.docx",
+                            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                        )
                             
                     except Exception as e:
                         st.error(f"Error de conexión con Google Gemini: {e}")
@@ -311,7 +383,7 @@ def mostrar_aplicacion():
                         for f_tmp in archivos_temporales:
                             if os.path.exists(f_tmp): os.remove(f_tmp)
         else:
-            st.info("👆 Sube un trabajo de grado en el paso 2 para habilitar el motor de análisis.")
+            st.info("👆 Sube un trabajo de grado (formato PDF o TXT) en el paso 2 para habilitar el motor de análisis.")
 
     # --- PESTAÑA ADMIN ---
     if st.session_state["usuario_actual"] == "claudio":
