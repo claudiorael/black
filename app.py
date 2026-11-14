@@ -263,7 +263,7 @@ def mostrar_aplicacion():
                         prompt_base = obtener_prompt()
                         instrucciones = f"{prompt_base}\n\nTono solicitado: {enfoque_feedback}.\nNivel de exigencia (1-5): {nivel_teorico}."
                         
-                        modelo = genai.GenerativeModel(model_name="gemini-1.5-pro", system_instruction=instrucciones)
+                        modelo = genai.GenerativeModel(model_name="gemini-1.5-pro-latest", system_instruction=instrucciones)
                         
                         contenido = [g_trabajo]
                         if g_autor:
