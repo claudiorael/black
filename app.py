@@ -10,10 +10,10 @@ from datetime import datetime
 # --- 1. CONFIGURACIÓN DE PÁGINA (WIDE = ANCHO COMPLETO) ---
 st.set_page_config(page_title="Portal Mokkita", page_icon="🦔", layout="wide")
 
-# La URL directa a tu imagen en GitHub una vez que la subas
+# La URL directa a tu imagen en GitHub (Asegúrate de subir mokkita.png a tu repo)
 URL_MOKKITA = "https://raw.githubusercontent.com/claudiorael/black/main/mokkita.png"
 
-# --- 2. SÚPER CSS PARA UI MODERNA ---
+# --- 2. SÚPER CSS PARA UI MODERNA Y MOKKITA FLOTANTE ---
 st.markdown(f"""
 <style>
     /* Fondo de la aplicación con un gradiente suave y profesional */
@@ -37,7 +37,7 @@ st.markdown(f"""
     }}
 
     /* Estilizar Títulos */
-    h1, h2, h3 {{
+    h1, h2, h3, h4 {{
         color: #1e293b !important;
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         font-weight: 800;
@@ -62,7 +62,7 @@ st.markdown(f"""
         box-shadow: 0 8px 25px rgba(118, 75, 162, 0.6);
     }}
 
-    /* --- MOKKITA FLOTANTE (SIN IFRAMES) --- */
+    /* --- MOKKITA FLOTANTE (SIN IFRAMES PARA EVITAR QUE QUEDE ATRAPADO) --- */
     @keyframes flotar {{
         0% {{ transform: translateY(0px); }}
         50% {{ transform: translateY(-12px); }}
@@ -76,7 +76,7 @@ st.markdown(f"""
         display: flex;
         flex-direction: column;
         align-items: flex-end;
-        pointer-events: none; /* Para no bloquear clics en la pantalla */
+        pointer-events: none; /* No bloquea los clics en la pantalla */
     }}
     .bot-bubble {{
         background: white;
@@ -152,24 +152,24 @@ def renderizar_globo(usuario):
     st.markdown(f"""
         <div class="bot-container">
             <div class="bot-bubble">{mensaje}</div>
-            <div class="bot-img"></div>
+            <div class="bot-img" title="Mokkita está listo para evaluar"></div>
         </div>
     """, unsafe_allow_html=True)
 
-# --- SESIÓN ---
+# --- 4. SESIÓN Y ESTADO ---
 if "autenticado" not in st.session_state: st.session_state["autenticado"] = False
 if "usuario_actual" not in st.session_state: st.session_state["usuario_actual"] = None
 
-# --- LOGIN (DISEÑO CENTRADO EN TARJETA) ---
+# --- 5. LOGIN (DISEÑO CENTRADO) ---
 def mostrar_login():
     st.markdown("<br><br><br>", unsafe_allow_html=True)
-    _, col_centro, _ = st.columns([1, 1, 1]) # Columnas para centrar el login en pantalla ancha
+    _, col_centro, _ = st.columns([1, 1, 1]) 
     
     with col_centro:
         st.markdown("<h1 style='text-align: center;'>🦔 Portal Mokkita</h1>", unsafe_allow_html=True)
         st.markdown("<p style='text-align: center; color: #64748b;'>Acceso a la plataforma de revisión académica</p><br>", unsafe_allow_html=True)
         
-        usuario = st.text_input("Usuario", placeholder="Ingresa tu usuario...")
+        usuario = st.text_input("Usuario", placeholder="Ingresa tu usuario...").strip().lower()
         clave = st.text_input("Contraseña", type="password", placeholder="Ingresa tu contraseña...")
         
         st.markdown("<br>", unsafe_allow_html=True)
@@ -186,7 +186,7 @@ def mostrar_login():
             except KeyError:
                 st.error("Falta configurar los secretos de usuarios.")
 
-# --- APP PRINCIPAL (FULL WIDTH) ---
+# --- 6. APP PRINCIPAL ---
 def mostrar_aplicacion():
     genai.configure(api_key=st.secrets["gemini"]["api_key"])
     
@@ -209,7 +209,7 @@ def mostrar_aplicacion():
     if st.session_state["usuario_actual"] == "claudio":
         tab_revisor, tab_admin = st.tabs(["🎓 Workspace Académico", "⚙️ Administración (Mokkita)"])
     else:
-        tab_revisor = st.container()
+        tab_revisor, = st.tabs(["🎓 Workspace Académico"])
 
     with tab_revisor:
         st.markdown("## Análisis de Defensa de Grado")
@@ -263,7 +263,19 @@ def mostrar_aplicacion():
                         prompt_base = obtener_prompt()
                         instrucciones = f"{prompt_base}\n\nTono solicitado: {enfoque_feedback}.\nNivel de exigencia (1-5): {nivel_teorico}."
                         
-                        modelo = genai.GenerativeModel(model_name="gemini-1.5-flash", system_instruction=instrucciones)
+                        # --- BÚSQUEDA DINÁMICA DE MODELOS PARA EVITAR ERROR 404 ---
+                        modelo_elegido = "gemini-1.5-flash" # Fallback de seguridad
+                        try:
+                            for m in genai.list_models():
+                                if "1.5" in m.name and "generateContent" in m.supported_generation_methods:
+                                    nombre_limpio = m.name.replace("models/", "")
+                                    modelo_elegido = nombre_limpio
+                                    if "pro" in nombre_limpio:
+                                        break # Dar prioridad a la versión PRO si la API Key la permite
+                        except Exception:
+                            pass
+                        
+                        modelo = genai.GenerativeModel(model_name=modelo_elegido, system_instruction=instrucciones)
                         
                         contenido = [g_trabajo]
                         if g_autor:
@@ -273,7 +285,7 @@ def mostrar_aplicacion():
                             contenido.append("Analiza de manera imparcial este trabajo de grado.")
                         
                         respuesta = modelo.generate_content(contenido)
-                        st.success("¡Análisis completado!")
+                        st.success(f"¡Análisis completado exitosamente con {modelo_elegido}!")
                         
                         st.markdown("<div style='background: white; padding: 30px; border-radius: 15px; border-left: 6px solid #764ba2;'>", unsafe_allow_html=True)
                         st.markdown(respuesta.text)
@@ -308,5 +320,7 @@ def mostrar_aplicacion():
                     st.dataframe(json.load(f), use_container_width=True)
 
 # --- INICIO ---
-if not st.session_state["autenticado"]: mostrar_login()
-else: mostrar_aplicacion()
+if not st.session_state["autenticado"]: 
+    mostrar_login()
+else: 
+    mostrar_aplicacion()
